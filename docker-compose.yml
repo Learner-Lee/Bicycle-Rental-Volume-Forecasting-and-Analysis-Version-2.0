@@ -1,0 +1,18 @@
+services:
+  bike-mining-new:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bike_mining_new
+    ports:
+      - "8400:8400"
+    restart: unless-stopped
+    environment:
+      - STREAMLIT_SERVER_HEADLESS=true
+      - STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8400/_stcore/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
