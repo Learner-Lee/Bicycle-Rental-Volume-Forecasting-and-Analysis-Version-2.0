@@ -15,6 +15,7 @@ COPY preprocess.py /app/preprocess.py
 COPY hour.csv      /app/hour.csv
 COPY hour_wash.csv /app/hour_wash.csv
 COPY ML/           /app/ML/
+COPY image/        /app/image/
 
 EXPOSE 8400
 

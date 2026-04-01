@@ -3,7 +3,7 @@
 自行车租赁数据挖掘平台 / Bike Sharing Data Mining Platform
 Port: 8400  |  UCI Bike Sharing Dataset (hour.csv)
 """
-import time, math, warnings
+import time, math, warnings, base64
 import numpy as np
 import pandas as pd
 import streamlit as st
@@ -23,9 +23,10 @@ from preprocess import FEATURE_COLS, inverse_transform
 
 # ── Paths ─────────────────────────────────────────────────────
 BASE  = os.path.dirname(os.path.abspath(__file__))
-WASH  = os.path.join(BASE, "hour_wash.csv")
-RAW   = os.path.join(BASE, "hour.csv")
-MLDIR = os.path.join(BASE, "ML")
+WASH    = os.path.join(BASE, "hour_wash.csv")
+RAW     = os.path.join(BASE, "hour.csv")
+MLDIR   = os.path.join(BASE, "ML")
+IMGDIR  = os.path.join(BASE, "image")
 
 # ── Page Config ───────────────────────────────────────────────
 st.set_page_config(
@@ -317,6 +318,9 @@ MODEL_INFO = {
 **❌ Cons:**
 - Still a linear model — cannot model nonlinear relationships
 - Requires tuning hyperparameter α""",
+        "images": [
+            {"path": "l1.png"},
+        ],
     },
     "决策树回归": {
         "icon": "🌳", "complexity": "⭐⭐",
@@ -348,6 +352,9 @@ MODEL_INFO = {
 - A single tree is prone to **overfitting** — memorizes training data
 - Sensitive to small data changes; less stable than ensemble methods
 - Lower accuracy than Random Forest/XGBoost (which combine many trees)""",
+        "images": [
+            {"path": "desiontree.png"},
+        ],
     },
     "随机森林": {
         "icon": "🌲", "complexity": "⭐⭐⭐",
@@ -377,6 +384,10 @@ MODEL_INFO = {
 
 **❌ Cons:**
 - Large model size (100 trees); less interpretable than linear models""",
+        "images": [
+            {"after_zh": "（Bagging 思想）。",          "after_en": "(Bagging).",                         "path": "bagging.png"},
+            {"after_zh": "比单个强学习器更稳健。",       "after_en": "than a single strong learner.",      "path": "randomforest.png"},
+        ],
     },
     "梯度提升": {
         "icon": "🚀", "complexity": "⭐⭐⭐⭐",
@@ -406,6 +417,10 @@ MODEL_INFO = {
 **❌ Cons:**
 - **Sequential training** — cannot be parallelized, slower
 - More hyperparameters — prone to overfitting without careful tuning""",
+        "images": [
+            {"after_zh": "（预测误差）。",               "after_en": "of the previous tree.",              "path": "bagging vs boosting.png"},
+            {"after_zh": '模型"精准补刀"弱点。',         "after_en": "the model's weaknesses.",            "path": "boosting.png"},
+        ],
     },
     "XGBoost": {
         "icon": "⚡", "complexity": "⭐⭐⭐⭐⭐",
@@ -591,6 +606,46 @@ def insight(text):
 
 def sec(text):
     st.markdown(f'<div class="sec">{text}</div>', unsafe_allow_html=True)
+
+def show_algo_desc(info):
+    """Render algo description with images inserted at specified split points."""
+    lang = st.session_state.lang
+    desc = info["en"] if lang == "en" else info["zh"]
+    images = info.get("images", [])
+
+    if not images:
+        st.markdown(f'<div class="algo-desc">{desc}</div>', unsafe_allow_html=True)
+        return
+
+    remaining = desc
+    for img in images:
+        key = f"after_{lang}"
+        marker = img.get(key) or img.get("after_zh")
+        path = os.path.join(IMGDIR, img["path"])
+
+        if marker and marker in remaining:
+            cut = remaining.index(marker) + len(marker)
+            st.markdown(f'<div class="algo-desc">{remaining[:cut]}</div>', unsafe_allow_html=True)
+            remaining = remaining[cut:]
+        else:
+            # no marker → flush all remaining text first, then image
+            st.markdown(f'<div class="algo-desc">{remaining}</div>', unsafe_allow_html=True)
+            remaining = ""
+
+        if os.path.exists(path):
+            with open(path, "rb") as _f:
+                _b64 = base64.b64encode(_f.read()).decode()
+            _ext = os.path.splitext(path)[1].lstrip(".")
+            st.markdown(
+                f'<div style="text-align:center;margin:12px 0;">'
+                f'<img src="data:image/{_ext};base64,{_b64}" style="height:250px;width:auto;">'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+
+    if remaining.strip():
+        st.markdown(f'<div class="algo-desc">{remaining}</div>', unsafe_allow_html=True)
+
 
 def metrics_row(res):
     c1, c2, c3, c4 = st.columns(4)
@@ -1051,7 +1106,7 @@ def page_model(name: str):
     )
 
     with st.expander(t("algo_intro"), expanded=True):
-        st.markdown(f'<div class="algo-desc">{desc}</div>', unsafe_allow_html=True)
+        show_algo_desc(info)
         st.code(info["code"], language="python")
 
     key = f"res_{name}"
@@ -1090,7 +1145,7 @@ def page_random_forest():
         unsafe_allow_html=True,
     )
     with st.expander(t("algo_intro"), expanded=True):
-        st.markdown(f'<div class="algo-desc">{desc}</div>', unsafe_allow_html=True)
+        show_algo_desc(info)
         st.code(info["code"], language="python")
 
     key = "res_随机森林"
@@ -1157,7 +1212,7 @@ def page_xgboost():
         unsafe_allow_html=True,
     )
     with st.expander(t("algo_intro"), expanded=True):
-        st.markdown(f'<div class="algo-desc">{desc}</div>', unsafe_allow_html=True)
+        show_algo_desc(info)
         st.code(info["code"], language="python")
 
     key = "res_XGBoost"
@@ -1246,7 +1301,7 @@ def page_decision_tree():
         unsafe_allow_html=True,
     )
     with st.expander(t("algo_intro"), expanded=True):
-        st.markdown(f'<div class="algo-desc">{desc}</div>', unsafe_allow_html=True)
+        show_algo_desc(info)
         st.code(info["code"], language="python")
 
     key = "res_决策树回归"
