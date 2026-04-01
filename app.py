@@ -1418,11 +1418,25 @@ def page_test():
 
     TRAINED = [k.replace("res_", "") for k in st.session_state
                if k.startswith("res_") and
-               k.replace("res_", "") in ["线性回归", "岭回归", "随机森林", "梯度提升", "XGBoost"]]
+               k.replace("res_", "") in REGRESSION_KEYS]
     if not TRAINED:
         st.warning(t("⚠️ 请先在 Deep Learning 中训练至少一个模型。",
                      "⚠️ Please train at least one model in Deep Learning first."))
         return
+
+    # 月份 → 季节映射（与数据集一致：1=春 3-5，2=夏 6-8，3=秋 9-11，4=冬 12/1/2）
+    def month_to_season(m):
+        if m in (3, 4, 5):  return 1
+        if m in (6, 7, 8):  return 2
+        if m in (9, 10, 11): return 3
+        return 4  # 12, 1, 2
+
+    SEASON_LABELS = {
+        1: t("🌸 春季 (3–5月)", "🌸 Spring (Mar–May)"),
+        2: t("☀️ 夏季 (6–8月)", "☀️ Summer (Jun–Aug)"),
+        3: t("🍂 秋季 (9–11月)", "🍂 Autumn (Sep–Nov)"),
+        4: t("❄️ 冬季 (12–2月)", "❄️ Winter (Dec–Feb)"),
+    }
 
     c_in, c_out = st.columns([2, 1])
     with c_in:
@@ -1432,12 +1446,21 @@ def page_test():
         mth = r1c2.slider(t("月份 mnth", "Month"), 1, 12, 6)
         yr  = r1c3.selectbox(t("年份", "Year"), [0, 1],
                               format_func=lambda x: ["2011", "2012"][x])
-        r2c1, r2c2, r2c3 = st.columns(3)
-        season  = r2c1.selectbox(t("季节", "Season"), [1, 2, 3, 4],
-                                  format_func=lambda x: [t("春","Spr"),t("夏","Sum"),t("秋","Aut"),t("冬","Win")][x-1])
-        workday = r2c2.selectbox(t("工作日", "Workday"), [0, 1],
+
+        # 季节由月份自动推导，只读展示
+        season = month_to_season(mth)
+        st.markdown(
+            f'<div style="background:#f0f4ff;border-left:3px solid #1E88E5;'
+            f'padding:.45rem .8rem;border-radius:4px;margin-bottom:.6rem;font-size:.9rem;">'
+            f'🗓 <b>{t("季节（由月份自动确定）","Season (auto from month)")}</b>：'
+            f'{SEASON_LABELS[season]}</div>',
+            unsafe_allow_html=True,
+        )
+
+        r2c1, r2c2 = st.columns(2)
+        workday = r2c1.selectbox(t("工作日", "Workday"), [0, 1],
                                   format_func=lambda x: [t("否","No"),t("是","Yes")][x])
-        weather = r2c3.selectbox(t("天气", "Weather"), [1, 2, 3],
+        weather = r2c2.selectbox(t("天气", "Weather"), [1, 2, 3],
                                   format_func=lambda x: [t("晴","Clear"),t("薄雾","Mist"),t("雨雪","Rain")][x-1])
         r3c1, r3c2, r3c3 = st.columns(3)
         atemp_c  = r3c1.slider(t("体感温度（°C）", "Feels Like (°C)"),  0, 50,  25, 1)
@@ -1472,6 +1495,7 @@ def page_test():
 
             CLS_MAP = {
                 "线性回归": LinearRegression, "岭回归": Ridge,
+                "决策树回归": DecisionTreeRegressor,
                 "随机森林": RandomForestRegressor, "梯度提升": GradientBoostingRegressor,
                 "XGBoost":  XGBRegressor,
             }
